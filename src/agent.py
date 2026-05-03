@@ -67,6 +67,17 @@ class BaziAgent:
         cbs = progress_callbacks or {}
         self.state = PipelineState(bazi_input=bazi)
 
+        # 创建分析会话
+        session_id = self.db.save_analysis_session(
+            bazi=bazi,
+            config={
+                "llm_type": getattr(self.config, 'LLM_TYPE', 'OpenAI'),
+                "max_agents": getattr(self.config, 'MAX_PARALLEL_AGENTS', 3),
+                "db_path": getattr(self.config, 'DB_PATH', ''),
+            }
+        )
+        self.state.session_id = session_id
+
         # ── Stage 1：并行读书，产出各书的 N 条结论 ────────
         self._notify("reading_books")
         books = self.db.get_all_books()
@@ -97,6 +108,13 @@ class BaziAgent:
                     logger.error(f"书 {book_id} 分析失败: {e}")
                     self.state.conclusions_by_book[book_id] = []
 
+        # 保存结论到数据库
+        all_conclusions = [
+            c for clist in self.state.conclusions_by_book.values() for c in clist
+        ]
+        if all_conclusions:
+            self.db.save_conclusions(self.state.session_id, all_conclusions)
+
         self.state.stage = "books_done"
         self._save_checkpoint("stage1_conclusions")
 
@@ -116,6 +134,11 @@ class BaziAgent:
         expansion_node = VariantExpansionNode(self.llm, on_progress=variant_cb)
         self.state.variant_records = expansion_node.run(all_conclusions)
         logger.info(f"展开变体共 {len(self.state.variant_records)} 条（2N）")
+
+        # 保存变体到数据库
+        if self.state.variant_records:
+            self.db.save_variants(self.state.session_id, self.state.variant_records)
+
         self.state.stage = "variants_done"
         self._save_checkpoint("stage2_variants")
 
@@ -140,6 +163,14 @@ class BaziAgent:
             f"比对完成：对组 {len(self.state.correct_results)} 条，"
             f"错组 {len(self.state.incorrect_results)} 条"
         )
+
+        # 保存比对结果到数据库
+        if self.state.correct_results or self.state.incorrect_results:
+            self.db.save_comparison_results(
+                self.state.session_id,
+                self.state.correct_results,
+                self.state.incorrect_results
+            )
         self.state.stage = "comparison_done"
         self._save_checkpoint("stage3_comparisons")
 
@@ -151,6 +182,13 @@ class BaziAgent:
             self.state.correct_results,
             self.state.incorrect_results,
         )
+
+        # 保存最终结论
+        if self.state.final_conclusion:
+            self.db.update_final_conclusion(
+                self.state.session_id,
+                self.state.final_conclusion.synthesis
+            )
         self.state.stage = "done"
         self._save_checkpoint("stage4_final")
 

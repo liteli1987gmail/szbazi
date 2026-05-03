@@ -74,6 +74,7 @@ class FinalConclusion:
 class PipelineState:
     """整个流程的状态快照，支持断点恢复"""
     bazi_input: str
+    session_id: Optional[str] = None
     stage: str = "init"
 
     # 第一层：各书的段落结论（N 条 per book）
