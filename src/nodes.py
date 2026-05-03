@@ -9,17 +9,17 @@ import logging
 from typing import List, Callable, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ..state.state import (
+from .state.state import (
     Paragraph, ParagraphConclusion, VariantRecord,
     ComparisonResult, FinalConclusion, VariantType, PipelineState
 )
-from ..prompts.prompts import (
+from .prompts.prompts import (
     PARAGRAPH_ANALYSIS_SYSTEM, PARAGRAPH_ANALYSIS_USER,
     VARIANT_EXPANSION_SYSTEM, VARIANT_EXPANSION_USER,
     COMPARISON_SYSTEM, COMPARISON_USER,
     SYNTHESIS_SYSTEM, SYNTHESIS_USER,
 )
-from ..llms.llm import BaseLLM
+from .llms.llm import BaseLLM
 
 logger = logging.getLogger(__name__)
 

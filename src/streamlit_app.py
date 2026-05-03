@@ -10,6 +10,9 @@ import streamlit as st
 import threading
 import time
 import types
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── 页面配置 ──────────────────────────────────────────
 st.set_page_config(
@@ -24,9 +27,20 @@ st.caption("基于多本古籍，逐段落分析八字命理，2N变体回溯比
 # ── 侧边栏：配置 ───────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ 系统配置")
-    api_key = st.text_input("OpenAI / DeepSeek API Key", type="password")
-    base_url = st.text_input("API Base URL（DeepSeek填写）", value="https://api.openai.com/v1")
-    model = st.selectbox("模型", ["gpt-4o-mini", "gpt-4o", "deepseek-chat"])
+
+    # LLM 类型选择
+    llm_type = st.selectbox("LLM 类型", ["MiniMax", "OpenAI/DeepSeek"])
+
+    if llm_type == "MiniMax":
+        api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.minimaxi.com/anthropic")
+        model = "MiniMax-M2"
+        st.success(f"✅ 使用 MiniMax（自动读取 .env）")
+    else:
+        api_key = st.text_input("API Key", type="password")
+        base_url = st.text_input("API Base URL", value="https://api.openai.com/v1")
+        model = st.selectbox("模型", ["gpt-4o-mini", "gpt-4o", "deepseek-chat"])
+
     db_path = st.text_input("数据库路径", value="data/bazi_knowledge.db")
 
     st.divider()
@@ -65,7 +79,7 @@ detail_tabs_placeholder = st.empty()
 
 # ── 运行逻辑 ─────────────────────────────────────────
 if run_btn:
-    if not api_key:
+    if llm_type != "MiniMax" and not api_key:
         st.error("请在侧边栏填入 API Key")
         st.stop()
     if not bazi.strip():
@@ -81,6 +95,7 @@ if run_btn:
         MAX_PARALLEL_AGENTS=max_agents,
         OUTPUT_DIR="reports",
         SAVE_INTERMEDIATE_STATES=True,
+        LLM_TYPE=llm_type,
     )
 
     from src import BaziAgent

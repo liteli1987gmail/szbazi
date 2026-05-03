@@ -9,11 +9,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Dict, Optional
 
 from .state.state import PipelineState
-from .nodes.nodes import (
+from .nodes import (
     BookAnalysisNode, VariantExpansionNode,
     ComparisonNode, SynthesisNode
 )
 from .llms.llm import BaseLLM, create_llm
+from .llms.minimax import MiniMaxLLM
 from .tools.database import BookDatabase
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,19 @@ class BaziAgent:
         self.config = config
         self.on_stage_change = on_stage_change  # UI 阶段切换回调
 
-        self.llm: BaseLLM = create_llm(config)
+        # 根据 LLM_TYPE 创建对应的 LLM
+        llm_type = getattr(config, 'LLM_TYPE', 'OpenAI')
+        if llm_type == 'MiniMax':
+            from dotenv import load_dotenv
+            load_dotenv()
+            import os
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.minimaxi.com/anthropic")
+            model = getattr(config, 'OPENAI_MODEL', 'MiniMax-M2')
+            self.llm = MiniMaxLLM(api_key=api_key, base_url=base_url, model=model)
+        else:
+            self.llm = create_llm(config)
+
         self.db = BookDatabase(config.DB_PATH)
         self.state: Optional[PipelineState] = None
 
