@@ -202,7 +202,7 @@ class BookDatabase:
             for c in conclusions:
                 p = c.paragraph if hasattr(c, 'paragraph') else c.get('paragraph')
                 conn.execute(
-                    """INSERT INTO conclusions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    """INSERT OR IGNORE INTO conclusions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         c.conclusion_id if hasattr(c, 'conclusion_id') else c.get('conclusion_id', ''),
                         session_id,
@@ -221,7 +221,7 @@ class BookDatabase:
         with self._conn() as conn:
             for v in variants:
                 conn.execute(
-                    """INSERT INTO variants VALUES (?, ?, ?, ?, ?)""",
+                    """INSERT OR IGNORE INTO variants VALUES (?, ?, ?, ?, ?)""",
                     (
                         v.variant_id,
                         session_id,

@@ -210,11 +210,71 @@ class BaziAgent:
             self.on_stage_change(stage)
 
     def _save_checkpoint(self, name: str):
-        if not getattr(self.config, "SAVE_INTERMEDIATE_STATES", False):
-            return
         os.makedirs(self.config.OUTPUT_DIR, exist_ok=True)
-        path = os.path.join(self.config.OUTPUT_DIR, f"{name}.pkl")
-        self.state.save(path)
+        # Pickle 二进制（用于程序恢复）
+        if getattr(self.config, "SAVE_INTERMEDIATE_STATES", False):
+            pkl_path = os.path.join(self.config.OUTPUT_DIR, f"{name}.pkl")
+            self.state.save(pkl_path)
+        # JSON（用于人工查看 + 中断恢复）
+        json_path = os.path.join(self.config.OUTPUT_DIR, f"{name}.json")
+        self._state_to_json(json_path)
+
+    def _state_to_json(self, path: str):
+        """将当前状态序列化为 JSON（用于断点恢复和人工审查）"""
+        import json
+        data = {
+            "bazi_input": self.state.bazi_input,
+            "session_id": getattr(self.state, "session_id", None),
+            "stage": self.state.stage,
+            "conclusions_by_book": {},
+            "variant_records": [],
+            "correct_results": [],
+            "incorrect_results": [],
+        }
+        # 结论
+        for book_id, concs in self.state.conclusions_by_book.items():
+            data["conclusions_by_book"][book_id] = []
+            for c in concs:
+                data["conclusions_by_book"][book_id].append({
+                    "conclusion_id": c.conclusion_id,
+                    "paragraph": {
+                        "paragraph_id": c.paragraph.paragraph_id,
+                        "book_id": c.paragraph.book_id,
+                        "book_name": c.paragraph.book_name,
+                        "content": c.paragraph.content,
+                        "sequence": c.paragraph.sequence,
+                    },
+                    "bazi_input": c.bazi_input,
+                    "conclusion_text": c.conclusion_text,
+                    "created_at": c.created_at,
+                })
+        # 变体
+        for v in self.state.variant_records:
+            data["variant_records"].append({
+                "variant_id": v.variant_id,
+                "source_conclusion_id": v.source_conclusion.conclusion_id,
+                "variant_type": v.variant_type.value,
+                "variant_text": v.variant_text,
+            })
+        # 比对结果（只保留 ID 和分数，完整数据过大）
+        for r in self.state.correct_results[:50]:
+            data["correct_results"].append({
+                "result_id": r.result_id,
+                "variant_id": r.variant_record.variant_id,
+                "compared_paragraph_id": r.compared_paragraph.paragraph_id,
+                "relationship": r.relationship,
+                "relevance_score": r.relevance_score,
+            })
+        for r in self.state.incorrect_results[:50]:
+            data["incorrect_results"].append({
+                "result_id": r.result_id,
+                "variant_id": r.variant_record.variant_id,
+                "compared_paragraph_id": r.compared_paragraph.paragraph_id,
+                "relationship": r.relationship,
+                "relevance_score": r.relevance_score,
+            })
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
     def _save_report(self, bazi: str):
         if not self.state.final_conclusion:
