@@ -23,23 +23,23 @@ DB_PATH = "data/bazi_knowledge.db"
 TOP_N = 10
 
 
-def build_synthesis_prompt(bazi: str, conclusions: list, correct_variants: list, incorrect_variants: list, top_n: int = 10) -> tuple:
+def build_synthesis_prompt(bazi: str, conclusions: list, correct_variants: list, incorrect_variants: list) -> tuple:
     """构建综合分析的 prompt（不依赖比对结果）"""
 
-    # 从正确变体提取核心结论
+    # 从正确变体提取全量核心结论
     correct_lines = []
-    for v in correct_variants[:top_n]:
+    for v in correct_variants:
         correct_lines.append(f"- 【正】{v['variant_text']}")
 
-    # 从错误变体提取矛盾观点
+    # 从错误变体提取全量矛盾观点
     incorrect_lines = []
-    for v in incorrect_variants[:top_n]:
+    for v in incorrect_variants:
         incorrect_lines.append(f"- 【反】{v['variant_text']}")
 
-    # 结论来源摘要
+    # 结论来源全量摘要
     conclusion_lines = []
-    for c in conclusions[:top_n]:
-        conclusion_lines.append(f"- 《{c['book_name']}》第{c['sequence']}段：{c['conclusion_text'][:100]}...")
+    for c in conclusions:
+        conclusion_lines.append(f"- 《{c['book_name']}》第{c['sequence']}段：{c['conclusion_text']}")
 
     system_prompt = """你是一位资深命理综合分析师。
 用户输入了一个八字，已经通过古籍分析得到：
@@ -58,16 +58,16 @@ def build_synthesis_prompt(bazi: str, conclusions: list, correct_variants: list,
 
     user_prompt = f"""八字：{bazi}
 
-【古籍段落结论（前{top_n}条）】
+【古籍段落结论（{len(conclusions)}条）】
 """ + "\n".join(conclusion_lines) + f"""
 
-【正向变体（前{top_n}条，对结论的正面支持）】
+【正向变体（{len(correct_variants)}条，对结论的正面支持）】
 """ + "\n".join(correct_lines) + f"""
 
-【负向变体（前{top_n}条，对结论的质疑/反面观点）】
+【负向变体（{len(incorrect_variants)}条，对结论的质疑/反面观点）】
 """ + "\n".join(incorrect_lines) + """
 
-请综合以上材料，输出最终命理分析报告："""
+请综合以上全部材料，输出最终命理分析报告："""
 
     return system_prompt, user_prompt
 
@@ -80,7 +80,7 @@ def run_synthesis(bazi: str, conclusions: list, correct_variants: list, incorrec
 
     llm = MiniMaxLLM(api_key=api_key, base_url=base_url, model=model)
 
-    system_prompt, user_prompt = build_synthesis_prompt(bazi, conclusions, correct_variants, incorrect_variants, top_n)
+    system_prompt, user_prompt = build_synthesis_prompt(bazi, conclusions, correct_variants, incorrect_variants)
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -144,7 +144,7 @@ def main():
         return
 
     # 生成综合结论
-    result = run_synthesis(bazi, conclusions, correct_variants, incorrect_variants, top_n)
+    result = run_synthesis(bazi, conclusions, correct_variants, incorrect_variants)
 
     print(f"\n{'='*60}")
     print("【最终综合结论】")
