@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# 导入日志模块
+from logs.analysis_log import save_analysis_log, list_analysis_logs
+
 # ── 页面配置 ──────────────────────────────────────────
 st.set_page_config(
     page_title="八字古籍分析系统",
@@ -49,6 +52,17 @@ with st.sidebar:
     min_relevance = st.slider("最低相关度阈值", 0.0, 1.0, 0.5, 0.05)
     top_n = st.slider("最终综合取用 Top-N 结果", 5, 20, 10)
     max_workers = st.slider("比对并发线程数", 1, 8, 4)
+
+    st.divider()
+    st.header("📜 分析日志")
+    if st.button("🔄 刷新日志列表"):
+        st.rerun()
+    logs = list_analysis_logs()
+    if logs:
+        for log in logs[:10]:
+            st.text(f"{log['timestamp']} | {log['bazi']} | {log['conclusions_count']}条")
+    else:
+        st.info("暂无分析日志")
 
     st.divider()
     st.info("💡 比对阶段耗时较长（2N × 全段落），建议先用小数据集测试")
@@ -191,8 +205,25 @@ if run_btn:
     # ── 展示结果 ──────────────────────────────────────
     state = progress_state["result_state"]
     if state and state.final_conclusion:
+        # 保存日志
+        all_c = [c for clist in state.conclusions_by_book.values() for c in clist]
+        log_id, json_path, md_path = save_analysis_log(
+            bazi=bazi.strip(),
+            conclusions=all_c,
+            variant_records=state.variant_records,
+            correct_results=state.correct_results,
+            incorrect_results=state.incorrect_results,
+            final_conclusion=state.final_conclusion.synthesis,
+            config={
+                "llm_type": llm_type,
+                "model": model if llm_type != "MiniMax" else "MiniMax-M2",
+                "db_path": db_path,
+                "max_agents": max_agents,
+            }
+        )
+
         with result_area.container():
-            st.success("✅ 分析完成！")
+            st.success(f"✅ 分析完成！已保存日志: {log_id}")
             st.subheader("📋 最终命理分析报告")
             st.markdown(state.final_conclusion.synthesis)
 
