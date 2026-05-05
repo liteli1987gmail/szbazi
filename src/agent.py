@@ -142,37 +142,13 @@ class BaziAgent:
         self.state.stage = "variants_done"
         self._save_checkpoint("stage2_variants")
 
-        # ── Stage 3：2N × 全段落回溯比对 ─────────────────
-        self._notify("comparing")
-        all_paragraphs = self.db.get_all_paragraphs()
-
-        def comparison_cb(done, total):
-            if "comparison" in cbs:
-                cbs["comparison"](done, total)
-
-        comparison_node = ComparisonNode(
-            llm=self.llm,
-            min_relevance=0.5,
-            max_workers=4,
-            on_progress=comparison_cb,
-        )
-        self.state.correct_results, self.state.incorrect_results = comparison_node.run(
-            self.state.variant_records, all_paragraphs
-        )
-        logger.info(
-            f"比对完成：对组 {len(self.state.correct_results)} 条，"
-            f"错组 {len(self.state.incorrect_results)} 条"
-        )
-
-        # 保存比对结果到数据库
-        if self.state.correct_results or self.state.incorrect_results:
-            self.db.save_comparison_results(
-                self.state.session_id,
-                self.state.correct_results,
-                self.state.incorrect_results
-            )
+        # ── Stage 3：跳过全量比对，直接进入综合 ─────────────
+        # （比对耗时过长，跳过直接用变体生成结论）
+        self.state.correct_results = []
+        self.state.incorrect_results = []
         self.state.stage = "comparison_done"
         self._save_checkpoint("stage3_comparisons")
+        logger.info("Stage 3 已跳过（未进行全段落比对）")
 
         # ── Stage 4：综合生成最终结论 ──────────────────────
         self._notify("synthesizing")
