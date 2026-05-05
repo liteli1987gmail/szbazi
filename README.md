@@ -15,9 +15,7 @@
 
 对 API 调用、八字计算与解读有疑问？请备注需求添加微信：
 
-<img src="https://raw.githubusercontent.com/liteli1987gmail/graphragzh/main/public/img/wechat.jpg" width="200"/>
-
-> 图片地址：https://github.com/liteli1987gmail/graphragzh/blob/main/public/img/wechat.jpg
+![社群联络]https://raw.githubusercontent.com/liteli1987gmail/graphragzh/main/public/img/wechat.jpg"
 
 ---
 
@@ -54,7 +52,7 @@
 |------|--------|
 | 三命通会 | 354 |
 | 滴天髓阐微 | 221 |
-| 穷通宝鉴 | （获取中） |
+| 穷通宝鉴 | 334 |
 
 ---
 
